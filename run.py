@@ -7,11 +7,9 @@ import json
 import random
 import numpy as np
 from torch.utils.data import DataLoader
-from datasets import load_dataset, Features, Sequence, Value, Dataset
+from datasets import load_dataset
 from torch.utils.data import DataLoader
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
-from accelerate import Accelerator
-from accelerate import notebook_launcher
 
 MODEL = 'mistralai/Mistral-7B-v0.3'
 
@@ -41,7 +39,8 @@ class Config:
             batch_size: int,
             learning_rate: float,
             weight_decay: float,
-            eval_steps: int
+            eval_steps: int,
+            data_path: str
             ):
         self.dim = dim
         self.encoder_layers = encoder_layers
@@ -53,6 +52,7 @@ class Config:
         self.learning_rate = learning_rate
         self.weight_decay = weight_decay
         self.eval_steps = eval_steps
+        self.data_path = data_path
 
 
 def span_corrupt(token_ids, noise_density=0.15, mean_span_len=3, extra_id_base=sentinel_start):
@@ -177,17 +177,13 @@ def load_config(config_path):
         batch_size=config_data['batch_size'],
         learning_rate=config_data['learning_rate'],
         weight_decay=config_data['weight_decay'],
-        eval_steps=config_data['eval_steps']
+        eval_steps=config_data['eval_steps'],
+        data_path=config_data['data_path']
     )
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="config.json", help="Path to the config file")
-    parser.add_argument("--data-path", type=str)
-    args = parser.parse_args()
+    config = load_config("config.json")
 
-    config = load_config(args.config)
-
-    train_dataset, val_dataset = load_data(args.data_path, tokenizer, seq_len=config.max_length, ratio=0.01)
+    train_dataset, val_dataset = load_data(config.data_path, tokenizer, seq_len=config.max_length, ratio=0.01)
 
 
     training_args = Seq2SeqTrainingArguments(
@@ -219,6 +215,7 @@ if __name__ == "__main__":
         latent_dim=config.latent_dim
     )
 
+
     trainer = Seq2SeqTrainer(
         model=model,
         args=training_args,
@@ -226,7 +223,4 @@ if __name__ == "__main__":
         eval_dataset=val_dataset
     )
 
-    def train():
-        trainer.train()
-
-    notebook_launcher(train, num_processes=8)
+    trainer.train()
