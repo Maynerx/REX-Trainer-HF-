@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 from datasets import load_dataset, Features, Sequence, Value, Dataset
 from torch.utils.data import DataLoader
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
+from accelerate import Accelerator
 
 MODEL = 'mistralai/Mistral-7B-v0.3'
 
@@ -187,6 +188,8 @@ if __name__ == "__main__":
 
     train_dataset, val_dataset = load_data(args.data_path, tokenizer, seq_len=config.max_length, ratio=0.01)
 
+    accelerator = Accelerator()
+
     training_args = Seq2SeqTrainingArguments(
         output_dir="./rex_output",
         per_device_train_batch_size=config.batch_size,
@@ -205,6 +208,7 @@ if __name__ == "__main__":
     )
 
     model = Transformer(
+        vocab_size=len(tokenizer),
         dim=config.dim,
         encoder_layers=config.encoder_layers,
         decoder_layers=config.decoder_layers,
