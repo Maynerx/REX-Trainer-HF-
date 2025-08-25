@@ -11,6 +11,7 @@ from datasets import load_dataset, Features, Sequence, Value, Dataset
 from torch.utils.data import DataLoader
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 from accelerate import Accelerator
+from accelerate import notebook_launcher
 
 MODEL = 'mistralai/Mistral-7B-v0.3'
 
@@ -188,7 +189,6 @@ if __name__ == "__main__":
 
     train_dataset, val_dataset = load_data(args.data_path, tokenizer, seq_len=config.max_length, ratio=0.01)
 
-    accelerator = Accelerator()
 
     training_args = Seq2SeqTrainingArguments(
         output_dir="./rex_output",
@@ -204,7 +204,9 @@ if __name__ == "__main__":
         save_total_limit=3,
         bf16=True,                   # use mixed precision if your TPU/GPU supports
         gradient_accumulation_steps=1,
-        num_train_epochs=1
+        num_train_epochs=1,
+        tpu_num_cores=8,
+        dataloader_num_workers=0
     )
 
     model = Transformer(
@@ -224,7 +226,7 @@ if __name__ == "__main__":
         eval_dataset=val_dataset
     )
 
-    trainer.train()
+    def train():
+        trainer.train()
 
-    
-
+    notebook_launcher(train, num_processes=8)
