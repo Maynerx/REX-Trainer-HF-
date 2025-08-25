@@ -47,6 +47,8 @@ def main():
     special_tokens = [f"<extra_id_{i}>" for i in range(100)]
     tokenizer.add_special_tokens({"additional_special_tokens": special_tokens})
 
+    print(1)
+
     PAD_ID = tokenizer.pad_token_id
     BOS_ID = tokenizer.bos_token_id
     EOS_ID = tokenizer.eos_token_id
@@ -78,8 +80,10 @@ def main():
             "decoder_attention_mask": dec_mask,
         }
 
+    
     # ----- data (no multiproc map; keep workers 0) -----
     train_ds_raw = load_dataset("json", data_files=cfg["data_path"], split="train")
+    print(2)
     n = len(train_ds_raw); val_n = max(1, int(n * 0.01))
     val_ds_raw = train_ds_raw.select(range(val_n))
     train_ds_raw = train_ds_raw.select(range(val_n, n))
@@ -88,6 +92,8 @@ def main():
     val_ds   = val_ds_raw.map(chunk_and_pack_for_distill_span, batched=True, remove_columns=["text"])
     train_ds.set_format(type="torch")
     val_ds.set_format(type="torch")
+
+    print(3)
 
     # ----- model -----
     model = Transformer(
@@ -129,3 +135,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
