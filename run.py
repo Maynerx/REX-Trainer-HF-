@@ -4,6 +4,10 @@ from transformers import AutoTokenizer, Seq2SeqTrainer, Seq2SeqTrainingArguments
 # your model import
 from model import Transformer
 
+os.environ.pop('TPU_PROCESS_ADDRESSES', None)
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE']   = 'false'
+os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']  = '0.8'
+
 # --- stateless helpers (no globals) ---
 def pad_to_seq_len(x, seq_len, pad_id):
     return x + [pad_id] * (seq_len - len(x)) if len(x) < seq_len else x[:seq_len]
@@ -135,4 +139,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
