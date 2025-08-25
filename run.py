@@ -180,7 +180,8 @@ def load_config(config_path):
         eval_steps=config_data['eval_steps'],
         data_path=config_data['data_path']
     )
-if __name__ == "__main__":
+
+def main():
     config = load_config("config.json")
 
     train_dataset, val_dataset = load_data(config.data_path, tokenizer, seq_len=config.max_length, ratio=0.01)
@@ -224,3 +225,6 @@ if __name__ == "__main__":
     )
 
     trainer.train()
+
+if __name__ == "__main__":
+    main()
