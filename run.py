@@ -3,10 +3,7 @@ from datasets import load_dataset
 from transformers import AutoTokenizer, Seq2SeqTrainer, Seq2SeqTrainingArguments
 # your model import
 from model import Transformer
-
-os.environ.pop('TPU_PROCESS_ADDRESSES', None)
-os.environ['XLA_PYTHON_CLIENT_PREALLOCATE']   = 'false'
-os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']  = '0.8'
+import argparse
 
 # --- stateless helpers (no globals) ---
 def pad_to_seq_len(x, seq_len, pad_id):
@@ -36,8 +33,12 @@ def span_corrupt(token_ids, noise_density, mean_span_len, sentinel_start):
     return enc, dec
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="config.json")
+    args = parser.parse_args()
+    config_path = args.config
     # ----- config -----
-    with open("config.json") as f:
+    with open(config_path) as f:
         cfg = json.load(f)
     os.environ["HF_TOKEN"] = cfg.get("api_key","")
 
@@ -87,7 +88,6 @@ def main():
     
     # ----- data (no multiproc map; keep workers 0) -----
     train_ds_raw = load_dataset("json", data_files=cfg["data_path"], split="train")
-    print(2)
     n = len(train_ds_raw); val_n = max(1, int(n * 0.01))
     val_ds_raw = train_ds_raw.select(range(val_n))
     train_ds_raw = train_ds_raw.select(range(val_n, n))
@@ -96,8 +96,6 @@ def main():
     val_ds   = val_ds_raw.map(chunk_and_pack_for_distill_span, batched=True, remove_columns=["text"])
     train_ds.set_format(type="torch")
     val_ds.set_format(type="torch")
-
-    print(3)
 
     # ----- model -----
     model = Transformer(
@@ -123,7 +121,10 @@ def main():
         logging_steps=cfg["eval_steps"],
         eval_steps=cfg["eval_steps"],
         save_total_limit=3,
-        bf16=True,                             # or False if debugging first
+        fp16=True,                             # or False if debugging first
+        torch_compile=True,
+        torch_compile_backend="inductor",
+        torch_compile_mode="max-autotune",
         gradient_accumulation_steps=1,
         num_train_epochs=1,
         dataloader_num_workers=0
