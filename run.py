@@ -52,7 +52,6 @@ def main():
     special_tokens = [f"<extra_id_{i}>" for i in range(100)]
     tokenizer.add_special_tokens({"additional_special_tokens": special_tokens})
 
-    print(1)
 
     PAD_ID = tokenizer.pad_token_id
     BOS_ID = tokenizer.bos_token_id
@@ -121,7 +120,7 @@ def main():
         logging_steps=cfg["eval_steps"],
         eval_steps=cfg["eval_steps"],
         save_total_limit=3,
-        fp16=True,                             # or False if debugging first
+        bf16=True,                             # or False if debugging first
         torch_compile=True,
         torch_compile_backend="inductor",
         torch_compile_mode="max-autotune",
