@@ -125,7 +125,8 @@ def main():
         torch_compile=True,
         torch_compile_backend="inductor",
         torch_compile_mode="max-autotune",
-        gradient_accumulation_steps=1,
+        gradient_accumulation_steps=cfg["grad_accum_steps"],
+        warmup_steps=cfg["warmup_steps"],
         num_train_epochs=1,
         dataloader_num_workers=0
     )
