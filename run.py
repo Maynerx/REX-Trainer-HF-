@@ -12,24 +12,33 @@ def pad_to_seq_len(x, seq_len, pad_id):
 def make_attention_mask(seq, pad_id):
     return [0 if t == pad_id else 1 for t in seq]
 
-def span_corrupt(token_ids, noise_density, mean_span_len, sentinel_start):
+def span_corrupt(token_ids, noise_density=0.15, mean_span_len=3, sentinel_start=32000, max_sentinels=100):
     n_tokens = len(token_ids)
-    n_mask = max(1, int(n_tokens * noise_density))
-    span_starts = np.random.choice(range(n_tokens), size=n_mask, replace=False)
+    n_to_mask = max(1, int(round(n_tokens * noise_density)))
+    n_spans = max(1, int(round(n_to_mask / mean_span_len)))
+    n_spans = min(n_spans, max_sentinels)  # cap to available sentinels
+    span_starts = np.random.choice(n_tokens, size=n_spans, replace=False)
     span_starts.sort()
-
     enc, dec = [], []
-    cursor, sid = 0, sentinel_start
-    for start in span_starts:
-        if start < cursor: 
+    cursor = 0
+    for i, start in enumerate(span_starts):
+        if start < cursor:  # skip overlaps
             continue
-        span_len = max(1, min(np.random.poisson(mean_span_len), n_tokens - start))
-        enc.extend(token_ids[cursor:start]); enc.append(sid)
-        dec.append(sid); dec.extend(token_ids[start:start+span_len])
+        span_len = np.random.poisson(mean_span_len)
+        span_len = max(1, min(span_len, n_tokens - start))
+
+        sentinel_id = sentinel_start + i  # <extra_id_i>
+        if sentinel_id >= sentinel_start + max_sentinels:
+            break  # safety guard
+        enc.extend(token_ids[cursor:start])
+        enc.append(sentinel_id)
+        dec.append(sentinel_id)
+        dec.extend(token_ids[start:start+span_len])
+
         cursor = start + span_len
-        sid += 1
     enc.extend(token_ids[cursor:])
-    dec.append(sid)
+    final_sentinel = sentinel_start + min(len(span_starts), max_sentinels) - 1
+    dec.append(final_sentinel)
     return enc, dec
 
 def main():
@@ -140,6 +149,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
