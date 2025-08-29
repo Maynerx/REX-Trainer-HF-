@@ -27,7 +27,7 @@ def span_corrupt(token_ids, noise_density, mean_span_len, sentinel_start):
         enc.extend(token_ids[cursor:start]); enc.append(sid)
         dec.append(sid); dec.extend(token_ids[start:start+span_len])
         cursor = start + span_len
-        sid -= 1
+        sid += 1
     enc.extend(token_ids[cursor:])
     dec.append(sid)
     return enc, dec
@@ -140,5 +140,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
