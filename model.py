@@ -30,8 +30,7 @@ class GroupedQueryAttention(nn.Module):
                 max_length: int, 
                 dropout: int = 0.1, 
                 is_causal: bool = False, 
-                apply_rotary: bool = True, 
-                flash_attention: bool = False
+                apply_rotary: bool = True
                 ):
         super().__init__()
         assert dim % query_heads == 0, "dim must be divisible by query_heads"
@@ -49,8 +48,6 @@ class GroupedQueryAttention(nn.Module):
         self.out_proj = nn.Linear(dim, dim)
         self.dropout = nn.Dropout(dropout)
         self.head_dim = dim // query_heads
-
-        self.flash_attention = flash_attention
 
         self.apply_rotary = apply_rotary
         self.scale = self.head_dim**-0.5
@@ -217,7 +214,8 @@ class DecoderLayer(nn.Module):
             num_heads, 
             max_length, 
             dropout, 
-            is_causal=False
+            is_causal=False,
+            apply_rotary=False
         )
         self.norm_cross_attn_in = RMSNorm(dim)
         self.norm_cross_attn_out = RMSNorm(dim)
@@ -226,7 +224,7 @@ class DecoderLayer(nn.Module):
         self.norm_mlp_out = RMSNorm(dim)
         self.attn_dropout = nn.Dropout(dropout)
 
-    def forward(self, x: torch.Tensor, latent: torch.Tensor, mask: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, latent: torch.Tensor, mask: torch.Tensor = None, encoder_mask: torch.tensor = None) -> torch.Tensor:
         # Masked self-attention
         x = self.norm_masked_attn_in(x)
         masked_attn_output = self.attn_dropout(self.masked_attention(x, x, x, mask=mask))
@@ -235,7 +233,7 @@ class DecoderLayer(nn.Module):
 
         # Cross-attention with latent representation
         x = self.norm_cross_attn_in(x)
-        cross_attn_output = self.attn_dropout(self.cross_attention(x, latent, latent, mask=mask))
+        cross_attn_output = self.attn_dropout(self.cross_attention(x, latent, latent, mask=encoder_mask))
         x = x + cross_attn_output
         x = self.norm_cross_attn_out(x)
 
@@ -266,10 +264,10 @@ class Decoder(nn.Module):
         self.norm = RMSNorm(dim)
         self.out = nn.Linear(dim, vocab_size)
 
-    def forward(self, x: torch.Tensor, latent: torch.Tensor, mask: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, latent: torch.Tensor, mask: torch.Tensor = None, encoder_mask: torch.tensor = None) -> torch.Tensor:
         x = self.embedding(x)
         for layer in self.layers:
-            x = layer(x, latent, mask=mask)
+            x = layer(x, latent, mask=mask, encoder_mask=encoder_mask)
         x = self.norm(x)
         x = self.out(x)
         return x
@@ -315,7 +313,7 @@ class Transformer(nn.Module):
         if decoder_attention_mask is not None:
             decoder_attention_mask = decoder_attention_mask[:, None, None, :].to(torch.bool)
         latent = self.encoder(input_ids, mask=attention_mask)
-        output = self.decoder(decoder_input_ids, latent, mask=decoder_attention_mask)
+        output = self.decoder(decoder_input_ids, latent, mask=decoder_attention_mask, encoder_mask=attention_mask)
 
         if labels is not None:
             loss = F.cross_entropy(output.view(-1, output.size(-1)), labels.view(-1), ignore_index=-100)
@@ -323,4 +321,5 @@ class Transformer(nn.Module):
             loss = None
 
         return Seq2SeqLMOutput(logits=output, loss=loss)
+
 
