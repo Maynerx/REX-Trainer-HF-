@@ -307,11 +307,26 @@ class Transformer(nn.Module):
             dropout=dropout
         )
 
-    def forward(self, input_ids: torch.Tensor, decoder_input_ids: torch.Tensor, attention_mask: torch.Tensor = None, decoder_attention_mask: torch.Tensor = None, labels: torch.Tensor = None) -> Seq2SeqLMOutput:
+    def forward(self, 
+                input_ids: torch.Tensor, 
+                decoder_input_ids: torch.Tensor, 
+                attention_mask: torch.Tensor = None, 
+                decoder_attention_mask: torch.Tensor = None, 
+                labels: torch.Tensor = None,
+                test=False
+               ) -> Seq2SeqLMOutput:
         if attention_mask is not None:
-            attention_mask = attention_mask[:, None, None, :].to(torch.bool)
+            if test:
+                attention_mask = attention_mask[:, None, None, :].to(torch.bool)
+                attention_mask = ~attention_mask
+            else:
+                attention_mask = attention_mask[:, None, None, :].to(torch.bool)
         if decoder_attention_mask is not None:
-            decoder_attention_mask = decoder_attention_mask[:, None, None, :].to(torch.bool)
+            if test:
+                decoder_attention_mask = decoder_attention_mask[:, None, None, :].to(torch.bool)
+                decoder_attention_mask = ~decoder_attention_mask
+            else:
+                decoder_attention_mask = decoder_attention_mask[:, None, None, :].to(torch.bool)
         latent = self.encoder(input_ids, mask=attention_mask)
         output = self.decoder(decoder_input_ids, latent, mask=decoder_attention_mask, encoder_mask=attention_mask)
 
@@ -321,5 +336,6 @@ class Transformer(nn.Module):
             loss = None
 
         return Seq2SeqLMOutput(logits=output, loss=loss)
+
 
 
