@@ -312,21 +312,12 @@ class Transformer(nn.Module):
                 decoder_input_ids: torch.Tensor, 
                 attention_mask: torch.Tensor = None, 
                 decoder_attention_mask: torch.Tensor = None, 
-                labels: torch.Tensor = None,
-                test=False
+                labels: torch.Tensor = None
                ) -> Seq2SeqLMOutput:
         if attention_mask is not None:
-            if test:
-                attention_mask = attention_mask[:, None, None, :].to(torch.bool)
-                attention_mask = ~attention_mask
-            else:
-                attention_mask = attention_mask[:, None, None, :].to(torch.bool)
+            attention_mask = attention_mask[:, None, None, :].to(torch.bool)
         if decoder_attention_mask is not None:
-            if test:
-                decoder_attention_mask = decoder_attention_mask[:, None, None, :].to(torch.bool)
-                decoder_attention_mask = ~decoder_attention_mask
-            else:
-                decoder_attention_mask = decoder_attention_mask[:, None, None, :].to(torch.bool)
+            decoder_attention_mask = decoder_attention_mask[:, None, None, :].to(torch.bool)
         latent = self.encoder(input_ids, mask=attention_mask)
         output = self.decoder(decoder_input_ids, latent, mask=decoder_attention_mask, encoder_mask=attention_mask)
 
