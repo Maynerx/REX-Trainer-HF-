@@ -135,6 +135,7 @@ def main():
         torch_compile_mode="max-autotune",
         gradient_accumulation_steps=cfg["grad_accum_steps"],
         warmup_steps=cfg["warmup_steps"],
+        lr_scheduler_type="cosine",
         num_train_epochs=1,
         dataloader_num_workers=0
     )
