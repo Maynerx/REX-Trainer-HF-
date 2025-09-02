@@ -4,6 +4,7 @@ from transformers import AutoTokenizer, Seq2SeqTrainer, Seq2SeqTrainingArguments
 # your model import
 from model import Transformer
 import argparse
+from safetensors.torch import load_file
 
 # --- stateless helpers (no globals) ---
 def pad_to_seq_len(x, seq_len, pad_id):
@@ -44,6 +45,7 @@ def span_corrupt(token_ids, noise_density=0.15, mean_span_len=3, sentinel_start=
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.json")
+    parser.add_argument("--checkpoint", default=None)
     args = parser.parse_args()
     config_path = args.config
     # ----- config -----
@@ -106,15 +108,29 @@ def main():
     val_ds.set_format(type="torch")
 
     # ----- model -----
-    model = Transformer(
-        vocab_size=len(tokenizer),
-        dim=cfg["dim"],
-        encoder_layers=cfg["encoder_layers"],
-        decoder_layers=cfg["decoder_layers"],
-        num_heads=cfg["num_heads"],
-        max_length=cfg["max_length"],
-        latent_dim=cfg["latent_dim"]
-    )
+    if args.checkpoint is not None:
+        print(f"Loading checkpoint from {args.checkpoint}")
+        model_state = load_file(args.checkpoint)
+        model = Transformer(
+            vocab_size=len(tokenizer),
+            dim=cfg["dim"],
+            encoder_layers=cfg["encoder_layers"],
+            decoder_layers=cfg["decoder_layers"],
+            num_heads=cfg["num_heads"],
+            max_length=cfg["max_length"],
+            latent_dim=cfg["latent_dim"]
+        )
+        model.load_state_dict(model_state)
+    else:
+        model = Transformer(
+            vocab_size=len(tokenizer),
+            dim=cfg["dim"],
+            encoder_layers=cfg["encoder_layers"],
+            decoder_layers=cfg["decoder_layers"],
+            num_heads=cfg["num_heads"],
+            max_length=cfg["max_length"],
+            latent_dim=cfg["latent_dim"]
+        )
 
     # ----- trainer args (no tpu_num_cores) -----
     args_hf = Seq2SeqTrainingArguments(
